@@ -515,7 +515,7 @@ module CertLint
 end
 
 if __FILE__ == $PROGRAM_NAME
-  puts "Number,Issuer,Subject,Serial,NotBefore,NotAfter,Severity,Error,Revoked,Cert"
+  puts "Number,Issuer,CN,Serial,NotBefore,NotAfter,Type,Severity,Error,Revoked,Cert"
 
   ARGV.each do |file|
     fn = File.basename(file)

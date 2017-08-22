@@ -13,9 +13,9 @@
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 require 'certlint'
-
+puts "Number,Issuer,CN,Serial,NotBefore,NotAfter,Type,Severity,Error,Revoked,Cert"
 ARGV.each do |file|
-  puts "Number,Issuer,Subject,Serial,NotBefore,NotAfter,Severity,Error,Revoked,Cert"
+
   fn = File.basename(file)
   raw = File.read(file)
 
