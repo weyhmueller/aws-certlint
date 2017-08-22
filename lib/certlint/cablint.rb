@@ -25,6 +25,7 @@ module CertLint
     BR_EFFECTIVE = Time.new(2012, 7, 1)
     MONTHS_39 = Time.new(2015, 4, 1)
     NO_SHA1 = Time.new(2016, 1, 1)
+    ASN1_STRFLGS_ESC_MSB = 4
 
     # Allowed algorithms
     SIGNATURE_ALGORITHMS = {
@@ -47,13 +48,14 @@ module CertLint
       messages = []
       messages += CertLint.lint(der)
 
-      if messages.any? { |m| m.start_with? 'F:' }
-        messages << 'W: Cowardly refusing to run CAB check due to previous errors'
-        return messages
-      end
+      #if messages.any? { |m| m.start_with? 'F:' }
+      #  messages << 'W: Cowardly refusing to run CAB check due to previous errors'
+      #  return messages
+      #end
 
       begin
         c = OpenSSL::X509::Certificate.new(der)
+
       rescue
         # Catch anything and move along
         # CertLint will already be full of errors
@@ -229,7 +231,7 @@ module CertLint
       end
 
       # Things left are subscriber certificates
-      cert_type_identified = false
+      cert_type_identified = ''
 
       # Use EKUs and Subject attribute types to guess the cert type
       eku = c.extensions.find { |ex| ex.oid == 'extendedKeyUsage' }
@@ -243,7 +245,7 @@ module CertLint
       if subjattrs.include?('1.3.6.1.4.1.311.60.2.1.3') || subjattrs.include?('jurisdictionC')
         # EV
         messages << 'I: EV certificate identified'
-        cert_type_identified = true
+        cert_type_identified = 'EV'
         unless subjattrs.include? 'O'
           messages << 'E: EV certificates must include organizationName in subject'
         end
@@ -297,7 +299,7 @@ module CertLint
         if !eku.include?('TLS Web Server Authentication')
           messages << "W: TLS Server certificates must include serverAuth key purpose in extended key usage"
         end
-        cert_type_identified = true
+        cert_type_identified = 'OV'
         # Delete our temp key purpose
         eku.delete('tmp-serverauth-usable')
         # OK, we have an "SSL" certificate
@@ -485,16 +487,36 @@ module CertLint
         end
       end
 
-      unless cert_type_identified
+      if cert_type_identified == ''
         messages << 'I: No certificate type identified'
+        cert_type_identified = "??"
       end
-
-      messages
+      severitynames = {
+        E: 'ERROR',
+        W: 'WARNING',
+        I: 'INFO'
+      }
+      result = []
+      messages.each do |m|
+        severity, error = m.split(":")
+        issuer = c.issuer.to_s(OpenSSL::X509::Name::RFC2253 & ~ASN1_STRFLGS_ESC_MSB).split(',')
+        subject = c.subject.to_s(OpenSSL::X509::Name::RFC2253 & ~ASN1_STRFLGS_ESC_MSB).split(',')
+        issuer_o = "["+issuer[issuer.index{|s| s =~ /^O=(.*)/}].split('=')[1]+"]".force_encoding('utf-8')
+        issuer_cn = issuer[issuer.index{|s| s =~ /^CN=(.*)/}].split('=')[1].force_encoding('utf-8')
+        subject_cn = subject[subject.index{|s| s =~ /^CN=(.*)/}].split('=')[1].force_encoding('utf-8')
+        number = OpenSSL::Digest.hexdigest("SHA1","#{c.issuer.to_s(OpenSSL::X509::Name::RFC2253 & ~ASN1_STRFLGS_ESC_MSB).force_encoding('utf-8')}.#{c.serial.to_s}")
+        severityname = severitynames[severity.to_sym]
+        error = error.strip
+        result << "#{number.force_encoding('utf-8')},\"#{issuer_cn}, #{issuer_o}\",\"#{subject_cn}\",#{c.serial.to_s(16).downcase},#{c.not_before},#{c.not_after},#{cert_type_identified},#{severityname},\"#{error}\",,"
+      end
+      result
     end
   end
 end
 
 if __FILE__ == $PROGRAM_NAME
+  puts "Number,Issuer,Subject,Serial,NotBefore,NotAfter,Severity,Error,Revoked,Cert"
+
   ARGV.each do |file|
     fn = File.basename(file)
     raw = File.read(file)
@@ -508,7 +530,7 @@ if __FILE__ == $PROGRAM_NAME
 
     m += CABLint.lint(der)
     m.each do |msg|
-      puts "#{msg}\t#{fn}"
+      puts "#{msg}"
     end
   end
 end

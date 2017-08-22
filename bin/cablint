@@ -15,6 +15,7 @@
 require 'certlint'
 
 ARGV.each do |file|
+  puts "Number,Issuer,Subject,Serial,NotBefore,NotAfter,Severity,Error,Revoked,Cert"
   fn = File.basename(file)
   raw = File.read(file)
 
@@ -28,10 +29,10 @@ ARGV.each do |file|
   m += CertLint::CABLint.lint(der)
   m.each do |msg|
     begin
-      puts "#{msg}\t#{fn}"
+      puts "#{msg}" #\t#{fn}"
     rescue Encoding::UndefinedConversionError
       print msg
-      puts "\t#{fn}"
+      #puts "\t#{fn}"
     end
   end
 end
