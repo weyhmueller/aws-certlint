@@ -299,7 +299,7 @@ module CertLint
         if !eku.include?('TLS Web Server Authentication')
           messages << "W: TLS Server certificates must include serverAuth key purpose in extended key usage"
         end
-        cert_type_identified = 'OV'
+        cert_type_identified = 'OV' if cert_type_identified == ''
         # Delete our temp key purpose
         eku.delete('tmp-serverauth-usable')
         # OK, we have an "SSL" certificate
@@ -492,13 +492,14 @@ module CertLint
         cert_type_identified = "??"
       end
       severitynames = {
+        F: 'FATAL',
         E: 'ERROR',
         W: 'WARNING',
         I: 'INFO'
       }
       result = []
       messages.each do |m|
-        severity, error = m.split(":")
+        severity, _, error = m.partition(":")
         issuer = c.issuer.to_s(OpenSSL::X509::Name::RFC2253 & ~ASN1_STRFLGS_ESC_MSB).split(',')
         subject = c.subject.to_s(OpenSSL::X509::Name::RFC2253 & ~ASN1_STRFLGS_ESC_MSB).split(',')
         issuer_o = "["+issuer[issuer.index{|s| s =~ /^O=(.*)/}].split('=')[1]+"]".force_encoding('utf-8')
