@@ -511,7 +511,7 @@ module CertLint
         cert_text = '"' + c.to_text.gsub('"','\'').force_encoding('utf-8') + '"' if ENV['CERTLINT_TEXT']
         cert_text = c.to_s.force_encoding('utf-8') if ENV['CERTLINT_PEM']
 
-        result << "#{number.force_encoding('utf-8')},\"#{issuer_cn}, #{issuer_o}\",\"#{subject_cn}\",#{c.serial.to_s(16).downcase},#{c.not_before},#{c.not_after},#{cert_type_identified},#{severityname},\"#{error}\",,#{cert_text}
+        result << "#{number.force_encoding('utf-8')},\"#{issuer_cn}, #{issuer_o}\",\"#{subject_cn}\",#{c.serial.to_s(16).downcase},#{c.not_before},#{c.not_after},#{cert_type_identified},#{severityname},\"#{error}\",,#{cert_text}"
       end
       result
     end
